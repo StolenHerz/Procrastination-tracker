@@ -1,0 +1,61 @@
+id,date,time,module,message
+001,2026-10-07,19:00+05:00,spec,docs(spec): add project overview and MVP requirements
+002,2026-10-08,19:15+05:00,spec,docs(spec): document architecture and data model
+003,2026-10-09,19:30+05:00,spec,docs(spec): add backlog and commit schedule
+004,2026-10-10,19:45+05:00,repo,chore: add gitignore and project dependencies
+005,2026-10-11,20:00+05:00,config,feat(config): add app metadata paths and theme
+006,2026-10-12,20:15+05:00,logging,feat(logging): configure application logging
+007,2026-10-13,20:30+05:00,database,feat(db): add connection handling and errors
+008,2026-10-16,19:00+05:00,database,feat(db): create initial SQLite schema
+009,2026-10-17,19:15+05:00,database,feat(db): seed default activities
+010,2026-10-18,19:30+05:00,database,feat(db): add activity model and listing
+011,2026-10-19,19:45+05:00,database,feat(db): add activity management
+012,2026-10-20,20:00+05:00,database,feat(db): add logging and recent history
+013,2026-10-21,20:15+05:00,database,feat(db): add activity and daily statistics
+014,2026-10-22,20:30+05:00,database,feat(db): persist timer interval and add self-check
+015,2026-10-24,19:00+05:00,tests,test(db): add unittest temp database fixture
+016,2026-10-25,19:15+05:00,tests,test(db): cover schema and default seeding
+017,2026-10-26,19:30+05:00,tests,test(db): cover activity CRUD and validation
+018,2026-10-27,19:45+05:00,tests,test(db): cover logs and recent history
+019,2026-10-28,20:00+05:00,tests,test(db): cover statistics and interval settings
+020,2026-10-29,20:15+05:00,timer,feat(timer): add timer state models
+021,2026-10-30,20:30+05:00,timer,feat(timer): add scheduler thread skeleton
+022,2026-10-31,19:00+05:00,timer,feat(timer): implement start stop and reset
+023,2026-11-01,19:15+05:00,timer,feat(timer): implement pause and resume
+024,2026-11-02,19:30+05:00,timer,feat(timer): support runtime interval changes
+025,2026-11-03,19:45+05:00,timer,feat(timer): add callback event queue
+026,2026-11-04,20:00+05:00,tests,test(timer): cover lifecycle and interval changes
+027,2026-11-05,20:15+05:00,ui,feat(ui): add shared theme setup and window helper
+028,2026-11-06,20:30+05:00,ui,feat(ui): create topmost popup window
+029,2026-11-07,19:00+05:00,ui,feat(ui): render activity buttons from database
+030,2026-11-08,19:15+05:00,ui,feat(ui): save popup selection and reset timer
+031,2026-11-09,19:30+05:00,ui,feat(ui): open settings from popup
+032,2026-11-10,19:45+05:00,ui,feat(ui): handle popup dismissal and escape
+033,2026-11-11,20:00+05:00,ui,style(ui): polish popup layout and fonts
+034,2026-11-12,20:15+05:00,ui,feat(ui): create main window shell with tabs
+035,2026-11-13,20:30+05:00,ui,feat(ui): add interval editor and save action
+036,2026-11-14,19:00+05:00,ui,feat(ui): list activities from database
+037,2026-11-15,19:15+05:00,ui,feat(ui): add new activity dialog
+038,2026-11-16,19:30+05:00,ui,feat(ui): add rename activity dialog
+039,2026-11-17,19:45+05:00,ui,feat(ui): add delete activity confirmation
+040,2026-11-18,20:00+05:00,ui,feat(ui): show status and error messages
+041,2026-11-19,20:15+05:00,ui,style(ui): unify main window spacing and theme
+042,2026-11-20,20:30+05:00,ui,feat(ui): show seven day activity totals
+043,2026-11-21,19:00+05:00,ui,feat(ui): draw seven day bar chart
+044,2026-11-22,19:15+05:00,ui,feat(ui): add recent check in table
+045,2026-11-23,19:30+05:00,ui,feat(ui): refresh statistics after check in
+046,2026-11-24,19:45+05:00,ui,style(ui): add empty states and chart labels
+047,2026-11-25,20:00+05:00,tray,feat(tray): add tray icon manager
+048,2026-11-26,20:15+05:00,tray,feat(tray): open main window from menu
+049,2026-11-27,20:30+05:00,tray,feat(tray): add pause and resume action
+050,2026-11-28,19:00+05:00,tray,feat(tray): add check now action
+051,2026-11-29,19:15+05:00,tray,feat(tray): add quit and cleanup
+052,2026-11-30,19:30+05:00,ui,feat(ui): minimize to tray on close
+053,2026-12-01,19:45+05:00,app,feat(app): wire database timer ui and tray in main
+054,2026-12-02,20:00+05:00,app,feat(app): pump timer events safely into tkinter
+055,2026-12-03,20:15+05:00,app,feat(app): add startup behavior and single instance guard
+056,2026-12-04,20:30+05:00,app,feat(app): add graceful shutdown and error logging
+057,2026-12-05,19:00+05:00,assets,chore(assets): add application icon and ico asset
+058,2026-12-06,19:15+05:00,build,build: add pyinstaller spec
+059,2026-12-07,19:30+05:00,build,build: add powershell build script
+060,2026-12-08,19:45+05:00,docs,docs: add usage build and troubleshooting guide
