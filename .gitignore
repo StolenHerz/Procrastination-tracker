@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+env/
+
+# Local data and logs
+data.db
+data.db-*
+*.db-journal
+*.db-wal
+*.db-shm
+logs/
+*.log
+
+# Tests and tools
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Build artifacts
+build/
+dist/
+*.exe
+
+# IDE and OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
