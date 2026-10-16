@@ -35,6 +35,30 @@ def default_db_path() -> Path:
     return base_dir / "data.db"
 
 
+_SCHEMA_SQL = """
+CREATE TABLE IF NOT EXISTS activities (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    name       TEXT    NOT NULL COLLATE NOCASE UNIQUE,
+    is_default INTEGER NOT NULL DEFAULT 0 CHECK (is_default IN (0, 1))
+);
+
+CREATE TABLE IF NOT EXISTS logs (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    activity_id INTEGER NOT NULL,
+    timestamp   TEXT    NOT NULL,
+    FOREIGN KEY (activity_id) REFERENCES activities (id) ON DELETE RESTRICT
+);
+
+CREATE INDEX IF NOT EXISTS idx_logs_timestamp ON logs (timestamp);
+CREATE INDEX IF NOT EXISTS idx_logs_activity_id ON logs (activity_id);
+
+CREATE TABLE IF NOT EXISTS settings (
+    key   TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+);
+"""
+
+
 class Database:
     """Высокоуровневый интерфейс к SQLite-базе приложения."""
 
@@ -49,6 +73,7 @@ class Database:
             ) from exc
 
         logger.debug("Используется база данных: %s", self._db_path)
+        self._init_schema()
 
     @property
     def path(self) -> Path:
@@ -78,6 +103,18 @@ class Database:
     # ------------------------------------------------------------------
     # Схема базы данных
     # ------------------------------------------------------------------
+
+    def _init_schema(self) -> None:
+        try:
+            with self._connect() as connection:
+                connection.execute("PRAGMA journal_mode = WAL")
+                connection.executescript(_SCHEMA_SQL)
+        except DatabaseError:
+            raise
+        except OSError as exc:
+            raise DatabaseError(
+                f"Нет доступа к файлу базы данных: {self._db_path}"
+            ) from exc
 
     # ------------------------------------------------------------------
     # Виды деятельности
