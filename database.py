@@ -17,6 +17,12 @@ from typing import Iterator
 
 logger = logging.getLogger(__name__)
 
+DEFAULT_ACTIVITIES: tuple[str, ...] = (
+    "Учёба/работа",
+    "Прокрастинирую",
+    "Отдыхаю",
+)
+
 
 class DatabaseError(RuntimeError):
     """Ошибка при работе с базой данных."""
@@ -74,6 +80,7 @@ class Database:
 
         logger.debug("Используется база данных: %s", self._db_path)
         self._init_schema()
+        self._seed_default_activities()
 
     @property
     def path(self) -> Path:
@@ -115,6 +122,21 @@ class Database:
             raise DatabaseError(
                 f"Нет доступа к файлу базы данных: {self._db_path}"
             ) from exc
+
+    def _seed_default_activities(self) -> None:
+        """Добавить стандартные виды деятельности только при пустой таблице."""
+        with self._connect() as connection:
+            count = connection.execute(
+                "SELECT COUNT(*) AS total FROM activities"
+            ).fetchone()["total"]
+            if count:
+                return
+
+            connection.executemany(
+                "INSERT INTO activities (name, is_default) VALUES (?, 1)",
+                [(name,) for name in DEFAULT_ACTIVITIES],
+            )
+            logger.info("Добавлены стандартные виды деятельности.")
 
     # ------------------------------------------------------------------
     # Виды деятельности
