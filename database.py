@@ -12,6 +12,7 @@ import logging
 import sqlite3
 import sys
 from contextlib import contextmanager
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterator
 
@@ -30,6 +31,15 @@ class DatabaseError(RuntimeError):
 
 class ActivityExistsError(DatabaseError):
     """Вид деятельности с таким названием уже существует."""
+
+
+@dataclass(frozen=True)
+class Activity:
+    """Вид деятельности."""
+
+    id: int
+    name: str
+    is_default: bool
 
 
 def default_db_path() -> Path:
@@ -141,6 +151,31 @@ class Database:
     # ------------------------------------------------------------------
     # Виды деятельности
     # ------------------------------------------------------------------
+
+    @staticmethod
+    def _row_to_activity(row: sqlite3.Row) -> Activity:
+        return Activity(
+            id=row["id"],
+            name=row["name"],
+            is_default=bool(row["is_default"]),
+        )
+
+    def list_activities(self) -> list[Activity]:
+        """Вернуть все виды деятельности, сначала стандартные."""
+        with self._connect() as connection:
+            rows = connection.execute(
+                "SELECT id, name, is_default FROM activities "
+                "ORDER BY is_default DESC, name COLLATE NOCASE"
+            ).fetchall()
+        return [self._row_to_activity(row) for row in rows]
+
+    def get_activity(self, activity_id: int) -> Activity | None:
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT id, name, is_default FROM activities WHERE id = ?",
+                (activity_id,),
+            ).fetchone()
+        return self._row_to_activity(row) if row else None
 
     # ------------------------------------------------------------------
     # Журнал активности
