@@ -24,6 +24,8 @@ DEFAULT_ACTIVITIES: tuple[str, ...] = (
     "Отдыхаю",
 )
 
+MAX_ACTIVITY_NAME_LENGTH = 50
+
 
 class DatabaseError(RuntimeError):
     """Ошибка при работе с базой данных."""
@@ -176,6 +178,87 @@ class Database:
                 (activity_id,),
             ).fetchone()
         return self._row_to_activity(row) if row else None
+
+    @staticmethod
+    def _validate_activity_name(name: str) -> str:
+        cleaned = " ".join(name.split())
+        if not cleaned:
+            raise DatabaseError("Название вида деятельности не может быть пустым.")
+        if len(cleaned) > MAX_ACTIVITY_NAME_LENGTH:
+            raise DatabaseError(
+                f"Название не должно превышать {MAX_ACTIVITY_NAME_LENGTH} символов."
+            )
+        return cleaned
+
+    def _ensure_name_is_free(self, name: str, exclude_id: int | None = None) -> None:
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT id FROM activities WHERE name = ? COLLATE NOCASE",
+                (name,),
+            ).fetchone()
+
+        if row is not None and row["id"] != exclude_id:
+            raise ActivityExistsError(
+                "Вид деятельности с таким названием уже существует."
+            )
+
+    def add_activity(self, name: str) -> Activity:
+        """Добавить пользовательский вид деятельности."""
+        cleaned = self._validate_activity_name(name)
+        self._ensure_name_is_free(cleaned)
+
+        with self._connect() as connection:
+            cursor = connection.execute(
+                "INSERT INTO activities (name, is_default) VALUES (?, 0)",
+                (cleaned,),
+            )
+            activity_id = int(cursor.lastrowid)
+
+        logger.info("Добавлен вид деятельности: %s", cleaned)
+        return Activity(id=activity_id, name=cleaned, is_default=False)
+
+    def rename_activity(self, activity_id: int, new_name: str) -> Activity:
+        """Переименовать любой вид деятельности, сохранив флаг is_default."""
+        cleaned = self._validate_activity_name(new_name)
+        current = self.get_activity(activity_id)
+        if current is None:
+            raise DatabaseError("Вид деятельности не найден.")
+
+        self._ensure_name_is_free(cleaned, exclude_id=activity_id)
+
+        with self._connect() as connection:
+            connection.execute(
+                "UPDATE activities SET name = ? WHERE id = ?",
+                (cleaned, activity_id),
+            )
+
+        logger.info("Вид деятельности %s переименован в %s", activity_id, cleaned)
+        return Activity(id=activity_id, name=cleaned, is_default=current.is_default)
+
+    def delete_activity(self, activity_id: int) -> None:
+        """Удалить пользовательский вид деятельности без записей в журнале."""
+        activity = self.get_activity(activity_id)
+        if activity is None:
+            raise DatabaseError("Вид деятельности не найден.")
+        if activity.is_default:
+            raise DatabaseError("Стандартный вид деятельности нельзя удалить.")
+
+        with self._connect() as connection:
+            logs_count = connection.execute(
+                "SELECT COUNT(*) AS total FROM logs WHERE activity_id = ?",
+                (activity_id,),
+            ).fetchone()["total"]
+            if logs_count:
+                raise DatabaseError(
+                    "Нельзя удалить вид деятельности, по которому уже есть записи."
+                )
+
+            connection.execute(
+                "DELETE FROM activities WHERE id = ?",
+                (activity_id,),
+            )
+
+        logger.info("Удалён вид деятельности: %s", activity.name)
 
     # ------------------------------------------------------------------
     # Журнал активности
