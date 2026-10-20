@@ -13,6 +13,7 @@ import sqlite3
 import sys
 from contextlib import contextmanager
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 from typing import Iterator
 
@@ -44,6 +45,16 @@ class Activity:
     is_default: bool
 
 
+@dataclass(frozen=True)
+class LogEntry:
+    """Одна запись журнала активности."""
+
+    id: int
+    activity_id: int
+    activity_name: str
+    timestamp: datetime
+
+
 def default_db_path() -> Path:
     """Вернуть путь к data.db рядом с приложением или exe."""
     if getattr(sys, "frozen", False):
@@ -51,6 +62,12 @@ def default_db_path() -> Path:
     else:
         base_dir = Path(__file__).resolve().parent
     return base_dir / "data.db"
+
+
+def _normalize_timestamp(value: datetime | None) -> str:
+    """Привести время к строке, пригодной для сравнения и сортировки."""
+    moment = value or datetime.now()
+    return moment.replace(microsecond=0).isoformat(sep=" ")
 
 
 _SCHEMA_SQL = """
@@ -263,6 +280,54 @@ class Database:
     # ------------------------------------------------------------------
     # Журнал активности
     # ------------------------------------------------------------------
+
+    def log_activity(
+        self, activity_id: int, timestamp: datetime | None = None
+    ) -> int:
+        """Сохранить запись активности и вернуть её id."""
+        if self.get_activity(activity_id) is None:
+            raise DatabaseError("Вид деятельности не найден.")
+
+        moment = _normalize_timestamp(timestamp)
+        with self._connect() as connection:
+            cursor = connection.execute(
+                "INSERT INTO logs (activity_id, timestamp) VALUES (?, ?)",
+                (activity_id, moment),
+            )
+            log_id = int(cursor.lastrowid)
+
+        logger.info("Записана активность %s в %s", activity_id, moment)
+        return log_id
+
+    def recent_logs(self, limit: int = 20) -> list[LogEntry]:
+        """Последние записи журнала (свежие сверху)."""
+        safe_limit = max(1, min(limit, 500))
+        with self._connect() as connection:
+            rows = connection.execute(
+                "SELECT l.id, l.activity_id, l.timestamp, a.name AS activity_name "
+                "FROM logs AS l "
+                "JOIN activities AS a ON a.id = l.activity_id "
+                "ORDER BY l.timestamp DESC, l.id DESC "
+                "LIMIT ?",
+                (safe_limit,),
+            ).fetchall()
+
+        result: list[LogEntry] = []
+        for row in rows:
+            try:
+                moment = datetime.fromisoformat(row["timestamp"])
+            except ValueError:
+                logger.warning("Некорректная дата в записи %s", row["id"])
+                continue
+            result.append(
+                LogEntry(
+                    id=row["id"],
+                    activity_id=row["activity_id"],
+                    activity_name=row["activity_name"],
+                    timestamp=moment,
+                )
+            )
+        return result
 
     # ------------------------------------------------------------------
     # Статистика
