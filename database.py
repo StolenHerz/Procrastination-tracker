@@ -13,7 +13,7 @@ import sqlite3
 import sys
 from contextlib import contextmanager
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Iterator
 
@@ -53,6 +53,15 @@ class LogEntry:
     activity_id: int
     activity_name: str
     timestamp: datetime
+
+
+@dataclass(frozen=True)
+class ActivityStat:
+    """Количество записей по виду деятельности за период."""
+
+    activity_id: int
+    activity_name: str
+    count: int
 
 
 def default_db_path() -> Path:
@@ -332,6 +341,55 @@ class Database:
     # ------------------------------------------------------------------
     # Статистика
     # ------------------------------------------------------------------
+
+    def activity_totals(self, days: int = 7) -> list[ActivityStat]:
+        """Суммарное количество записей по каждому виду за последние days дней."""
+        since = self._period_start(days)
+        with self._connect() as connection:
+            rows = connection.execute(
+                "SELECT a.id AS activity_id, a.name AS activity_name, "
+                "       COUNT(l.id) AS total "
+                "FROM activities AS a "
+                "LEFT JOIN logs AS l "
+                "       ON l.activity_id = a.id AND l.timestamp >= ? "
+                "GROUP BY a.id, a.name "
+                "ORDER BY total DESC, a.name COLLATE NOCASE",
+                (since,),
+            ).fetchall()
+
+        return [
+            ActivityStat(
+                activity_id=row["activity_id"],
+                activity_name=row["activity_name"],
+                count=int(row["total"]),
+            )
+            for row in rows
+        ]
+
+    def daily_totals(self, days: int = 7) -> dict[date, int]:
+        """Количество записей по дням, включая дни без активности."""
+        safe_days = max(1, min(days, 365))
+        since_date = date.today() - timedelta(days=safe_days - 1)
+
+        with self._connect() as connection:
+            rows = connection.execute(
+                "SELECT date(timestamp) AS day, COUNT(*) AS total "
+                "FROM logs WHERE timestamp >= ? "
+                "GROUP BY day",
+                (f"{since_date.isoformat()} 00:00:00",),
+            ).fetchall()
+
+        counts = {row["day"]: int(row["total"]) for row in rows}
+        result: dict[date, int] = {}
+        for offset in range(safe_days):
+            day = since_date + timedelta(days=offset)
+            result[day] = counts.get(day.isoformat(), 0)
+        return result
+
+    def _period_start(self, days: int) -> str:
+        safe_days = max(1, min(days, 365))
+        start = date.today() - timedelta(days=safe_days - 1)
+        return f"{start.isoformat()} 00:00:00"
 
     # ------------------------------------------------------------------
     # Настройки
