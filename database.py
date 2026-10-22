@@ -27,6 +27,11 @@ DEFAULT_ACTIVITIES: tuple[str, ...] = (
 
 MAX_ACTIVITY_NAME_LENGTH = 50
 
+DEFAULT_INTERVAL_MINUTES = 25
+MIN_INTERVAL_MINUTES = 1
+MAX_INTERVAL_MINUTES = 1440
+INTERVAL_SETTING_KEY = "timer_interval_minutes"
+
 
 class DatabaseError(RuntimeError):
     """Ошибка при работе с базой данных."""
@@ -394,3 +399,72 @@ class Database:
     # ------------------------------------------------------------------
     # Настройки
     # ------------------------------------------------------------------
+
+    def get_setting(self, key: str, default: str | None = None) -> str | None:
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT value FROM settings WHERE key = ?",
+                (key,),
+            ).fetchone()
+        return row["value"] if row else default
+
+    def set_setting(self, key: str, value: str) -> None:
+        with self._connect() as connection:
+            connection.execute(
+                "INSERT INTO settings (key, value) VALUES (?, ?) "
+                "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+                (key, value),
+            )
+
+    def get_interval_minutes(self) -> int:
+        """Интервал таймера в минутах (25 по умолчанию)."""
+        raw_value = self.get_setting(INTERVAL_SETTING_KEY)
+        try:
+            minutes = (
+                int(raw_value) if raw_value is not None else DEFAULT_INTERVAL_MINUTES
+            )
+        except (TypeError, ValueError):
+            logger.warning("Некорректный интервал в настройках: %r", raw_value)
+            return DEFAULT_INTERVAL_MINUTES
+
+        return max(MIN_INTERVAL_MINUTES, min(minutes, MAX_INTERVAL_MINUTES))
+
+    def set_interval_minutes(self, minutes: int) -> None:
+        if isinstance(minutes, bool) or not isinstance(minutes, int):
+            raise DatabaseError("Интервал должен быть целым числом минут.")
+        if not MIN_INTERVAL_MINUTES <= minutes <= MAX_INTERVAL_MINUTES:
+            raise DatabaseError(
+                f"Интервал должен быть от {MIN_INTERVAL_MINUTES} "
+                f"до {MAX_INTERVAL_MINUTES} минут."
+            )
+        self.set_setting(INTERVAL_SETTING_KEY, str(minutes))
+
+
+if __name__ == "__main__":
+    # Быстрая самопроверка модуля на временной базе данных.
+    import tempfile
+
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
+
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        db = Database(Path(tmp_dir) / "data.db")
+
+        print("Виды деятельности:")
+        activities = db.list_activities()
+        for item in activities:
+            print(f"  {item.id}: {item.name} (default={item.is_default})")
+
+        db.log_activity(activities[0].id)
+        db.log_activity(activities[1].id)
+
+        print("\nСтатистика за 7 дней:")
+        for stat in db.activity_totals(7):
+            print(f"  {stat.activity_name}: {stat.count}")
+
+        print("\nЗаписи по дням:")
+        for day, count in db.daily_totals(7).items():
+            print(f"  {day}: {count}")
+
+        db.set_interval_minutes(30)
+        print(f"\nИнтервал: {db.get_interval_minutes()} мин.")
+        print("Самопроверка завершена успешно.")
