@@ -223,15 +223,14 @@ class Database:
 
     def _ensure_name_is_free(self, name: str, exclude_id: int | None = None) -> None:
         with self._connect() as connection:
-            row = connection.execute(
-                "SELECT id FROM activities WHERE name = ? COLLATE NOCASE",
-                (name,),
-            ).fetchone()
+            rows = connection.execute("SELECT id, name FROM activities").fetchall()
 
-        if row is not None and row["id"] != exclude_id:
-            raise ActivityExistsError(
-                "Вид деятельности с таким названием уже существует."
-            )
+        folded = name.casefold()
+        for row in rows:
+            if row["id"] != exclude_id and row["name"].casefold() == folded:
+                raise ActivityExistsError(
+                    "Вид деятельности с таким названием уже существует."
+                )
 
     def add_activity(self, name: str) -> Activity:
         """Добавить пользовательский вид деятельности."""
